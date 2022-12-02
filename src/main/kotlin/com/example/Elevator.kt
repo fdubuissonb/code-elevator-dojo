@@ -1,83 +1,39 @@
 package com.example
 
 class Elevator {
-    private var currentFloor = 0
-    private var currentDirection = Direction.UP
-    private var lastCommand = Command.UP
-
-    private var usersAwaiting = zeroList(MAX_FLOOR)
-    private var usersRequests = zeroList(MAX_FLOOR)
+    private var context = ElevatorContext(MAX_FLOOR)
+    private var state: ElevatorState = CloseDoors(context)
 
     fun onUserCall(atFloor: Int, toGo: Direction) {
-        usersAwaiting[atFloor] ++
+        context.usersRequests[atFloor] ++
     }
 
     fun onGoTo(floorToGo: Int) {
-        usersRequests[floorToGo] ++
+        context.usersRequests[floorToGo] ++
     }
 
     fun onUserEntered() {
-        usersAwaiting[currentFloor] --
+        context.usersRequests[context.currentFloor] --
     }
 
     fun onUserExited() {
-        usersRequests[currentFloor] --
+        context.usersRequests[context.currentFloor] --
     }
 
     fun onReset(cause: String) {
-        currentFloor = 0
-        currentDirection = Direction.UP
-        lastCommand = Command.NOTHING
-
-        usersAwaiting = zeroList(MAX_FLOOR)
-        usersRequests = zeroList(MAX_FLOOR)
+        context = ElevatorContext(MAX_FLOOR)
+        state= CloseDoors(context)
     }
 
     fun requestNextCommand(): Command {
-        lastCommand = when(lastCommand) {
-            Command.NOTHING, Command.UP, Command.DOWN -> {
-                if (usersAwaiting[currentFloor] + usersRequests[currentFloor] >  0)
-                    Command.OPEN
-                else
-                    nextFloorCommand()
-            }
-            Command.OPEN -> Command.CLOSE
-            Command.CLOSE -> {
-                nextFloorCommand()
-            }
-        }
-
-        return lastCommand
-    }
-
-    private fun nextFloorCommand(): Command {
-        if (currentDirection == Direction.UP) {
-            currentFloor++
-        } else {
-            currentFloor--
-        }
-
-        return if (currentFloor == MAX_FLOOR) {
-            currentDirection = Direction.DOWN
-            Command.UP
-        } else if (currentFloor == 0) {
-            currentDirection = Direction.UP
-            Command.DOWN
-        } else {
-            if (currentDirection == Direction.UP) {
-                Command.UP
-            } else {
-                Command.DOWN
-            }
-        }
+        state = state.nextState()
+        return state.command()
     }
 
     companion object {
         private const val MAX_FLOOR = 5
     }
 }
-
-private fun zeroList(size: Int) = (0..size).map { 0 }.toMutableList()
 
 enum class Command {
     NOTHING,
@@ -86,6 +42,7 @@ enum class Command {
     OPEN,
     CLOSE
 }
+
 enum class Direction {
     UP,
     DOWN
